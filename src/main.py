@@ -4,12 +4,8 @@ import json
 from pathlib import Path
 
 from .model import Scenario
-from .scoring import (
-    score_scenario,
-    rank_categories,
-    normalize_scores,
-    default_max_scores,
-)
+from .scoring import score_scenario, rank_categories, normalize_scores
+from .config import load_weights
 from .recommendations import build_recommendations
 
 
@@ -17,18 +13,19 @@ DATA_PATH = Path("data/scenarios/scenarios.json")
 
 
 def main():
+    cfg = load_weights()
     raw = json.loads(DATA_PATH.read_text(encoding="utf-8"))
     scenarios = [Scenario.from_dict(x) for x in raw]
 
     for s in scenarios:
-        scores, reasons, total = score_scenario(s)
+        scores, reasons, total = score_scenario(s, cfg)
 
         # Raw ranking
         ranked = rank_categories(scores)
 
         # Normalized ranking (0–10) for fair comparison across categories
-        max_scores = default_max_scores()
-        norm = normalize_scores(scores, max_scores, scale=10)
+        max_scores = cfg.max_scores
+        norm = normalize_scores(scores, max_scores, scale=cfg.normalized_max)
         ranked_norm = sorted(norm.items(), key=lambda kv: kv[1], reverse=True)
 
         # Use normalized rank for top categories

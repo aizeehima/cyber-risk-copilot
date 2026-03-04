@@ -1,0 +1,72 @@
+# Cyber Risk Copilot - Weight Configuration (V1)
+# Notes:
+# - Coarse weights are intentional for explainability.
+# - These will be refined in V2 using normalization + sensitivity analysis + optional practitioner feedback.
+
+scale:
+  normalized_max: 10
+
+# Max scores used for normalization (0-10 scale)
+max_scores:
+  identity_access: 8
+  email_phishing: 5
+  endpoint_device: 4
+  data_backup: 10
+  incident_readiness: 4
+  governance_compliance: 7
+
+weights:
+  # Governance / Compliance
+  compliance_pressure:
+    low: 1
+    medium: 2
+    high: 3
+  regulated_environment_present: 2
+  payment_processing_governance: 1
+  third_party_vendors_high_governance: 1
+
+  # Identity & Access
+  iam_maturity:
+    low: 4
+    medium: 2
+    high: 1
+  remote_access_present: 2
+  user_count:
+    ge_25: 2
+    ge_10: 1
+
+  # Email / Phishing
+  cloud_email:
+    microsoft_365: 2
+    google_workspace: 2
+    other: 1
+  third_party_vendors_high_email: 1
+
+  # Endpoint
+  endpoint_management:
+    unmanaged: 4
+    partially_managed: 2
+    managed: 1
+
+  # Data / Backup
+  data_sensitivity:
+    low: 1
+    medium: 2
+    high: 3
+  data_protection_maturity:
+    basic: 2
+    moderate: 1
+    strong: 0
+  backup_maturity:
+    basic: 3
+    moderate: 2
+    strong: 1
+  customer_data_volume_high: 1
+  payment_processing_data: 1
+
+  # Incident Readiness
+  logging_monitoring_maturity:
+    basic: 3
+    moderate: 2
+    strong: 1
+  baseline_incident_readiness: 1

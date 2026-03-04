@@ -1,24 +1,12 @@
 from __future__ import annotations
-from typing import Dict, List, Tuple
-from .model import Scenario
 
+from typing import Dict, List, Tuple
+
+from .config import WeightsConfig
+from .model import Scenario
 
 RiskScores = Dict[str, int]
 RiskReasons = Dict[str, List[str]]
-
-
-def _level_score(value: str, low: int = 1, medium: int = 2, high: int = 3) -> int:
-    v = (value or "").strip().lower()
-    if v in {"high"}:
-        return high
-    if v in {"medium", "moderate"}:
-        return medium
-    return low
-
-
-def _yes_score(value: str) -> int:
-    v = (value or "").strip().lower()
-    return 2 if v in {"yes", "true"} else 0
 
 
 def _add(scores: RiskScores, reasons: RiskReasons, cat: str, points: int, reason: str) -> None:
@@ -28,7 +16,7 @@ def _add(scores: RiskScores, reasons: RiskReasons, cat: str, points: int, reason
     reasons[cat].append(f"+{points} {reason}")
 
 
-def score_scenario(s: Scenario) -> Tuple[RiskScores, RiskReasons, int]:
+def score_scenario(s: Scenario, cfg: WeightsConfig) -> Tuple[RiskScores, RiskReasons, int]:
     """
     Returns:
       - category scores (higher = higher risk/priority)
@@ -48,98 +36,115 @@ def score_scenario(s: Scenario) -> Tuple[RiskScores, RiskReasons, int]:
     }
     reasons: RiskReasons = {k: [] for k in scores.keys()}
 
-    # --- Governance / compliance ---
-    cp = _level_score(s.compliance_pressure)
-    _add(scores, reasons, "governance_compliance", cp, f"compliance_pressure={s.compliance_pressure}")
+    w = cfg.weights
+
+    # ---------------------------
+    # Governance / Compliance
+    # ---------------------------
+    cp_map = w["compliance_pressure"]
+    cp_points = int(cp_map.get((s.compliance_pressure or "low").lower(), cp_map.get("low", 1)))
+    _add(scores, reasons, "governance_compliance", cp_points, f"compliance_pressure={s.compliance_pressure}")
 
     if s.regulatory_environment:
         _add(
             scores,
             reasons,
             "governance_compliance",
-            2,
+            int(w["regulated_environment_present"]),
             f"regulated_environment={','.join(s.regulatory_environment)}",
         )
 
-    # --- Identity & access ---
-    iam = (s.iam_maturity or "").lower()
-    if iam == "low":
-        _add(scores, reasons, "identity_access", 4, "iam_maturity=low")
-    elif iam == "medium":
-        _add(scores, reasons, "identity_access", 2, "iam_maturity=medium")
-    else:
-        _add(scores, reasons, "identity_access", 1, "iam_maturity=high/other")
+    # ---------------------------
+    # Identity & Access
+    # ---------------------------
+    iam_map = w["iam_maturity"]
+    iam_points = int(iam_map.get((s.iam_maturity or "low").lower(), iam_map.get("low", 4)))
+    _add(scores, reasons, "identity_access", iam_points, f"iam_maturity={s.iam_maturity}")
 
-    ra = _yes_score(s.remote_access)
-    _add(scores, reasons, "identity_access", ra, f"remote_access={s.remote_access}")
+    remote_yes = str(s.remote_access).strip().lower() in {"yes", "true"}
+    ra_points = int(w["remote_access_present"]) if remote_yes else 0
+    _add(scores, reasons, "identity_access", ra_points, f"remote_access={s.remote_access}")
 
+    uc_map = w["user_count"]
     if s.user_count >= 25:
-        _add(scores, reasons, "identity_access", 2, "user_count>=25")
+        _add(scores, reasons, "identity_access", int(uc_map["ge_25"]), "user_count>=25")
     elif s.user_count >= 10:
-        _add(scores, reasons, "identity_access", 1, "10<=user_count<25")
+        _add(scores, reasons, "identity_access", int(uc_map["ge_10"]), "10<=user_count<25")
 
-    # --- Email & phishing ---
-    _add(scores, reasons, "email_phishing", ra, f"remote_access={s.remote_access}")
+    # ---------------------------
+    # Email & Phishing
+    # ---------------------------
+    # remote access increases email compromise likelihood
+    _add(scores, reasons, "email_phishing", ra_points, f"remote_access={s.remote_access}")
 
-    if s.cloud_email in {"microsoft_365", "google_workspace"}:
-        _add(scores, reasons, "email_phishing", 2, f"cloud_email={s.cloud_email}")
-    else:
-        _add(scores, reasons, "email_phishing", 1, f"cloud_email={s.cloud_email}")
+    ce_map = w["cloud_email"]
+    ce_key = (s.cloud_email or "other").lower()
+    ce_points = int(ce_map.get(ce_key, ce_map.get("other", 1)))
+    _add(scores, reasons, "email_phishing", ce_points, f"cloud_email={s.cloud_email}")
 
-    if s.third_party_vendors in {"high"}:
-        _add(scores, reasons, "email_phishing", 1, "third_party_vendors=high")
+    if (s.third_party_vendors or "").lower() == "high":
+        _add(scores, reasons, "email_phishing", int(w["third_party_vendors_high_email"]), "third_party_vendors=high")
 
-    # --- Endpoint & device ---
-    ep = (s.endpoint_management or "").lower()
-    if ep == "unmanaged":
-        _add(scores, reasons, "endpoint_device", 4, "endpoint_management=unmanaged")
-    elif ep == "partially_managed":
-        _add(scores, reasons, "endpoint_device", 2, "endpoint_management=partially_managed")
-    else:
-        _add(scores, reasons, "endpoint_device", 1, "endpoint_management=managed")
+    # ---------------------------
+    # Endpoint / Device
+    # ---------------------------
+    ep_map = w["endpoint_management"]
+    ep_key = (s.endpoint_management or "managed").lower()
+    ep_points = int(ep_map.get(ep_key, ep_map.get("managed", 1)))
+    _add(scores, reasons, "endpoint_device", ep_points, f"endpoint_management={s.endpoint_management}")
 
-    # --- Data protection & backup ---
-    ds = _level_score(s.data_sensitivity)
-    _add(scores, reasons, "data_backup", ds, f"data_sensitivity={s.data_sensitivity}")
+    # ---------------------------
+    # Data Protection & Backup
+    # ---------------------------
+    ds_map = w["data_sensitivity"]
+    ds_key = (s.data_sensitivity or "low").lower()
+    ds_points = int(ds_map.get(ds_key, ds_map.get("low", 1)))
+    _add(scores, reasons, "data_backup", ds_points, f"data_sensitivity={s.data_sensitivity}")
 
-    # data_protection_maturity: basic -> higher risk, strong -> lower risk
-    dpm = (s.data_protection_maturity or "").lower()
-    if dpm in {"basic", "low"}:
-        _add(scores, reasons, "data_backup", 2, "data_protection_maturity=basic")
-    elif dpm in {"moderate", "medium"}:
-        _add(scores, reasons, "data_backup", 1, "data_protection_maturity=moderate")
-    else:
-        _add(scores, reasons, "data_backup", 0, "data_protection_maturity=strong")
+    dpm_map = w["data_protection_maturity"]
+    dpm_key = (s.data_protection_maturity or "basic").lower()
+    dpm_points = int(dpm_map.get(dpm_key, dpm_map.get("basic", 2)))
+    _add(scores, reasons, "data_backup", dpm_points, f"data_protection_maturity={s.data_protection_maturity}")
 
-    bm = (s.backup_maturity or "").lower()
-    if bm in {"basic", "low"}:
-        _add(scores, reasons, "data_backup", 3, "backup_maturity=basic")
-    elif bm in {"moderate", "medium"}:
-        _add(scores, reasons, "data_backup", 2, "backup_maturity=moderate")
-    else:
-        _add(scores, reasons, "data_backup", 1, "backup_maturity=strong")
+    bm_map = w["backup_maturity"]
+    bm_key = (s.backup_maturity or "basic").lower()
+    bm_points = int(bm_map.get(bm_key, bm_map.get("basic", 3)))
+    _add(scores, reasons, "data_backup", bm_points, f"backup_maturity={s.backup_maturity}")
 
-    if s.customer_data_volume == "high":
-        _add(scores, reasons, "data_backup", 1, "customer_data_volume=high")
+    if (s.customer_data_volume or "").lower() == "high":
+        _add(scores, reasons, "data_backup", int(w["customer_data_volume_high"]), "customer_data_volume=high")
 
-    # --- Incident readiness ---
-    lmm = (s.logging_monitoring_maturity or "").lower()
-    if lmm in {"basic", "low"}:
-        _add(scores, reasons, "incident_readiness", 3, "logging_monitoring_maturity=basic")
-    elif lmm in {"moderate", "medium"}:
-        _add(scores, reasons, "incident_readiness", 2, "logging_monitoring_maturity=moderate")
-    else:
-        _add(scores, reasons, "incident_readiness", 1, "logging_monitoring_maturity=strong")
+    # ---------------------------
+    # Incident Readiness
+    # ---------------------------
+    lm_map = w["logging_monitoring_maturity"]
+    lm_key = (s.logging_monitoring_maturity or "basic").lower()
+    lm_points = int(lm_map.get(lm_key, lm_map.get("basic", 3)))
+    _add(scores, reasons, "incident_readiness", lm_points, f"logging_monitoring_maturity={s.logging_monitoring_maturity}")
 
-    _add(scores, reasons, "incident_readiness", 1, "baseline SME readiness risk")
+    _add(
+        scores,
+        reasons,
+        "incident_readiness",
+        int(w["baseline_incident_readiness"]),
+        "baseline SME readiness risk",
+    )
 
-    # --- Business exposure modifiers ---
-    if s.payment_processing:
-        _add(scores, reasons, "governance_compliance", 1, "payment_processing=true")
-        _add(scores, reasons, "data_backup", 1, "payment_processing=true")
+    # ---------------------------
+    # Business exposure modifiers
+    # ---------------------------
+    if bool(s.payment_processing):
+        _add(scores, reasons, "data_backup", int(w["payment_processing_data"]), "payment_processing=true")
+        _add(scores, reasons, "governance_compliance", int(w["payment_processing_governance"]), "payment_processing=true")
 
-    if s.third_party_vendors == "high":
-        _add(scores, reasons, "governance_compliance", 1, "third_party_vendors=high")
+    if (s.third_party_vendors or "").lower() == "high":
+        _add(
+            scores,
+            reasons,
+            "governance_compliance",
+            int(w["third_party_vendors_high_governance"]),
+            "third_party_vendors=high",
+        )
 
     total = sum(scores.values())
     return scores, reasons, total
@@ -148,6 +153,7 @@ def score_scenario(s: Scenario) -> Tuple[RiskScores, RiskReasons, int]:
 def rank_categories(scores: RiskScores):
     return sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
 
+
 def normalize_scores(scores: RiskScores, max_scores: Dict[str, int], scale: int = 10) -> Dict[str, float]:
     """
     Normalize each category to a common scale (default 0–10).
@@ -155,21 +161,6 @@ def normalize_scores(scores: RiskScores, max_scores: Dict[str, int], scale: int 
     """
     out: Dict[str, float] = {}
     for cat, raw in scores.items():
-        m = max_scores.get(cat, 0)
+        m = int(max_scores.get(cat, 0) or 0)
         out[cat] = round((raw / m) * scale, 2) if m > 0 else 0.0
     return out
-
-
-def default_max_scores() -> Dict[str, int]:
-    """
-    Max scores based on current V1 scoring rules.
-    Update this if scoring rules change.
-    """
-    return {
-        "identity_access": 8,         # iam(4) + remote(2) + users(2)
-        "email_phishing": 5,          # remote(2) + cloud_email(2) + vendors(1)
-        "endpoint_device": 4,         # unmanaged(4)
-        "data_backup": 10,            # data_sens(3) + protect(2) + backup(3) + custvol(1) + pay(1)
-        "incident_readiness": 4,      # logging(3) + baseline(1)
-        "governance_compliance": 7,   # compliance(3) + regulated(2) + pay(1) + vendors(1)
-    }
