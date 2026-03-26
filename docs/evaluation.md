@@ -1,66 +1,100 @@
-# Cyber Risk Copilot – Evaluation Plan (V1 → V2)
+# Cyber Risk Copilot – Evaluation Plan
 
-## 1. Evaluation goal
-The objective of evaluation is to determine whether Cyber Risk Copilot produces (a) reasonable risk prioritization and (b) actionable, scenario-appropriate recommendations for resource-constrained SMEs. Because the tool is decision-support (not a real-time detection system), evaluation focuses on validity of prioritization and perceived utility, rather than direct measurement of breach reduction.
+## 1. Evaluation Goal
+The goal of evaluation is to determine whether Cyber Risk Copilot produces reasonable, explainable, and useful cybersecurity prioritization for small and medium-sized organizations. Since the system is a decision-support framework rather than a real-time security tool, evaluation focuses on the quality, relevance, and stability of the recommendations rather than direct measurement of breach reduction.
 
-## 2. Scenario-based evaluation dataset
-The tool will be evaluated across multiple realistic SME profiles represented as structured JSON scenarios (e.g., healthcare, fintech, ecommerce, agriculture). Each scenario includes organizational, technical, and security posture inputs.
+## 2. Evaluation Questions
+The evaluation is designed to answer the following questions:
 
-For each scenario, the tool outputs:
+1. Does the framework produce different priorities for different organizational scenarios?
+2. Are the recommended actions aligned with established cybersecurity standards?
+3. Are the results stable when scoring weights are adjusted?
+4. Do practitioners consider the recommendations reasonable and useful?
+
+## 3. Evaluation Components
+
+### 3.1 Scenario-Based Evaluation
+The framework will be evaluated using multiple structured SME scenarios represented as JSON profiles. These scenarios vary by industry, compliance exposure, organizational size, technical environment, and security maturity.
+
+Current scenario set includes:
+- healthcare
+- fintech
+- ecommerce
+- prediction market
+- agriculture
+
+For each scenario, the framework produces:
 - raw category scores
-- normalized category scores (0–10)
+- normalized category scores
 - top 3 prioritized risk categories
-- phased action plan (Phase 1/2/3)
-- explainability trace (reason breakdown per category)
+- phased recommendations
+- explainability traces
+- NIST CSF and CIS Controls mappings
 
-## 3. Baseline comparison
-To demonstrate utility beyond generic guidance, Cyber Risk Copilot will be compared to a baseline approach:
+### 3.2 Baseline Comparison
+To demonstrate that Cyber Risk Copilot adds value beyond a generic checklist, the framework will be compared against a static baseline.
 
-**Baseline A (Generic checklist baseline):**
-- A fixed “starter set” of controls (e.g., general best practices) applied equally to every scenario.
+#### Baseline Definition
+The baseline approach will apply the same generic best-practice priorities to all scenarios, without adapting to organizational context.
 
-**Comparison method:**
-- Measure whether Cyber Risk Copilot produces scenario-specific prioritization (changes in top categories and actions across scenarios).
-- Qualitatively assess whether Copilot recommendations are more tailored than baseline.
+Example baseline:
+- Enable MFA
+- Improve backups
+- Patch systems
+- Train users on phishing
+- Centralize logs
 
-Outcome:
-- Evidence that the model adapts recommendations to context, rather than outputting a static checklist.
+#### Comparison Goal
+The purpose of this comparison is to show that Cyber Risk Copilot:
+- adapts recommendations to scenario-specific context
+- changes the ordering of priorities depending on risk profile
+- provides more targeted recommendations than a one-size-fits-all checklist
 
-## 4. Sensitivity and stability analysis
-To test robustness, weights will be varied within a defined range (e.g., ±20% for key weights such as IAM maturity, backup maturity, data sensitivity). The analysis will measure:
+### 3.3 Sensitivity Analysis
+Because the framework relies on weighted scoring, sensitivity analysis will be used to assess how stable the recommendations remain when the weights are adjusted.
 
-- Stability of the top 3 ranked categories under weight perturbation
-- Frequency of rank-order changes
-- Identification of “swing factors” that cause major prioritization shifts
+The plan is to vary selected high-impact weights (for example IAM maturity, data sensitivity, backup maturity, and compliance pressure) by a fixed percentage, such as ±20%, and observe:
 
-Outcome:
-- Evidence that the model is not overly fragile and that changes in recommendations are explainable.
+- whether the top 3 risk categories remain stable
+- which categories are most sensitive to weight changes
+- whether recommendation shifts are reasonable and explainable
 
-## 5. Practitioner validation (optional but recommended)
-If feasible, a small set of practitioners (e.g., 3–5 IT/security professionals) will be asked to review selected scenarios and rank top priorities.
+This helps determine whether the framework is robust or overly dependent on specific weight settings.
 
-Protocol:
-- Provide 2–3 fictional SME scenarios and the tool’s top actions.
-- Ask practitioners to:
-  1) rank their top 5 actions for the first 30 days
-  2) identify disagreements with the tool output
-  3) indicate which factors should weigh more and why
+### 3.4 Practitioner Validation
+If feasible, a small number of security practitioners will be asked to review selected scenarios and compare their own priorities to the framework output.
 
-Metrics:
-- Overlap@5: how many actions match between practitioner and tool top-5
-- Qualitative feedback themes (e.g., missing controls, wrong ordering, unclear assumptions)
+Practitioners will be asked:
+- what their top priorities would be for the first 30 days
+- whether they agree with the framework’s top categories
+- which factors they believe should weigh more heavily
 
-Outcome:
-- Evidence that recommendations align with practitioner expectations and highlight areas for calibration.
+The purpose of practitioner validation is not to prove perfect correctness, but to assess whether the framework’s recommendations are reasonable and aligned with real-world security judgment.
 
-## 6. Reporting evaluation results
-Evaluation results will be summarized in tables and short narrative analysis:
-- Scenario → Top categories → Phase 1 actions
-- Baseline vs Copilot differences
-- Sensitivity findings
-- Practitioner alignment results (if performed)
+## 4. Evaluation Metrics
 
-## 7. Limitations
-- Scenario-based evaluation cannot directly measure real-world breach reduction.
-- Practitioner feedback may be limited in sample size.
-- The model emphasizes explainability and prioritization rather than complete coverage of all security controls.
+### 4.1 Differentiation Across Scenarios
+Measure whether different scenarios produce different prioritized categories and action plans.
+
+### 4.2 Standards Traceability
+Verify that generated actions map to relevant NIST CSF categories and CIS Controls.
+
+### 4.3 Stability Under Weight Variation
+Measure whether top-priority categories remain consistent when weights are adjusted within a reasonable range.
+
+### 4.4 Practitioner Agreement
+If practitioner feedback is collected, compare framework output with practitioner-ranked priorities using:
+- overlap in top actions
+- qualitative agreement/disagreement themes
+- perceived usefulness
+
+## 5. Expected Evaluation Output
+The final evaluation section of the project will include:
+- scenario-by-scenario results
+- comparison with the baseline approach
+- summary of sensitivity findings
+- summary of practitioner feedback (if available)
+- discussion of strengths, limitations, and future refinements
+
+## 6. Limitations
+This evaluation does not directly measure real-world reduction in cyber incidents. Instead, it evaluates whether the framework provides explainable, standards-aligned, and context-sensitive prioritization. Because the framework is intended as a decision-support tool, usefulness and alignment are more appropriate evaluation targets than direct operational effectiveness at this stage.
