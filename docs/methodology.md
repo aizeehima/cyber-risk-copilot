@@ -1,31 +1,123 @@
-# Cyber Risk Copilot – Scoring Methodology (V1)
+# Cyber Risk Copilot – Methodology\
 
-## 1. Why these risk categories?
-The Cyber Risk Copilot scores risk across six categories that represent common control domains emphasized in widely used security frameworks (e.g., NIST CSF and CIS Controls) and in typical SME threat exposure:
+## 1. Overview
+Cyber Risk Copilot uses a rule-based scoring model to evaluate cybersecurity risk across multiple categories and generate prioritized recommendations. The methodology is designed to be transparent, explainable, and configurable.
 
-- Identity and Access: account takeover, privilege misuse, weak authentication
-- Email and Phishing: phishing-based initial access and business email compromise
-- Endpoint and Device: malware/ransomware entry points and unmanaged devices
-- Data Protection and Backup: impact severity and recoverability
-- Incident Readiness: detection/response gaps and operational resilience
-- Governance and Compliance: policy/ownership gaps and regulatory obligations
+The framework maps organizational characteristics (inputs) to risk categories, computes weighted scores, normalizes those scores, and derives prioritized actions aligned with established cybersecurity standards.
 
-These categories are intended to be broad enough to cover most SME environments while remaining explainable and actionable.
+---
 
-## 2. How are weights determined?
-In V1, scoring weights are derived using a simplified likelihood × impact framing inspired by standard risk assessment thinking:
+## 2. Risk Categories
+The model evaluates risk across the following categories:
 
-- Factors that increase the probability of compromise primarily contribute to *likelihood* (e.g., weak IAM maturity, remote access exposure, unmanaged endpoints).
-- Factors that increase severity of harm primarily contribute to *impact* (e.g., high data sensitivity, large customer data volume, payment processing).
-- Factors that increase required control rigor contribute to *governance/compliance* (e.g., high compliance pressure, presence of regulatory obligations, high third-party dependency).
+- Identity and Access Risk
+- Email and Phishing Risk
+- Endpoint and Device Risk
+- Data Protection and Backup Risk
+- Incident Readiness
+- Governance and Compliance
 
-Weights are intentionally coarse-grained to keep the model transparent. For example, “high data sensitivity” is weighted higher because it increases the impact of a breach, while “remote access = yes” raises likelihood due to larger attack surface.
+Each category represents a distinct area of cybersecurity risk relevant to small and medium-sized organizations.
 
-## 3. Weight calibration and refinement plan
-V1 weights represent initial, explainable assumptions. In V2, weights will be refined using:
-1) **Normalization** to ensure category scores are comparable (avoid bias from categories with more contributing factors).
-2) **Sensitivity analysis** by varying key weights (e.g., ±20%) to measure stability of the top-ranked categories and recommendations.
-3) **Optional expert elicitation** by asking practitioners to rank top risks and actions for each scenario, then adjusting weights to improve agreement with practitioner priorities.
+---
 
-## 4. Transparency and explainability
-The model prints a reason breakdown for each category score (e.g., “+3 high data sensitivity” or “+2 remote access”). This makes the scoring auditable and easier to critique and improve.
+## 3. Scoring Model
+
+### 3.1 Weighted Risk Scoring
+
+Each risk category score is computed using a weighted sum of contributing factors:
+
+\[
+Score(c) = \sum_{i=1}^{n} w_i \cdot f_i
+\]
+
+Where:
+- \( c \) = risk category
+- \( w_i \) = weight assigned to factor \( i \)
+- \( f_i \) = contribution of factor \( i \) based on scenario inputs
+
+Weights are defined in an external configuration file (`weights.yaml`), allowing the model to remain flexible and easily adjustable.
+
+---
+
+### 3.2 Factor Contributions
+
+Each input factor contributes to one or more categories. Examples include:
+
+- Data sensitivity → increases data protection and backup risk
+- IAM maturity → influences identity and access risk
+- Logging maturity → impacts incident readiness
+- Compliance requirements → affect governance and compliance risk
+
+Factor contributions are explicitly recorded to provide explainability for each score.
+
+---
+
+## 4. Score Normalization
+
+To allow comparison across categories, raw scores are normalized:
+
+\[
+NormalizedScore(c) = \frac{Score(c)}{MaxScore(c)} \times S
+\]
+
+Where:
+- \( MaxScore(c) \) = maximum possible score for category \( c \)
+- \( S \) = scaling factor (default = 10)
+This ensures all categories are comparable on a consistent scale.
+
+---
+
+## 5. Prioritization Strategy
+
+Risk categories are ranked based on their normalized scores. The top three categories are selected as the primary focus areas.
+
+Recommendations are then generated based on these categories and grouped into phases:
+
+- Phase 1: Immediate actions (high impact, low complexity)
+- Phase 2: Intermediate improvements
+- Phase 3: Advanced or longer-term controls
+
+---
+
+## 6. Explainability
+
+For each category, the model provides a breakdown of contributing factors:
+
+Example:
+- +3 data_sensitivity = high
+- +2 backup_maturity = basic
+- +1 payment_processing = true
+
+This allows users to understand why a category was prioritized, making the model transparent and auditable.
+
+---
+
+## 7. Standards Alignment
+
+All recommendations are mapped to:
+
+- NIST Cybersecurity Framework (CSF)
+- CIS Controls v8
+
+This ensures that prioritization decisions are aligned with widely accepted cybersecurity standards and best practices.
+
+---
+
+## 8. Design Principles
+
+The framework is guided by the following principles:
+
+- Explainability over complexity
+- Configurability over hardcoded logic
+- Prioritization over exhaustive coverage
+- Practicality for resource-constrained organizations
+
+---
+
+## 9. Limitations
+
+- The model uses rule-based logic rather than machine learning
+- Weight selection is heuristic and requires calibration
+- The framework does not directly measure real-world risk reduction 
+These limitations are addressed through evaluation, sensitivity analysis, and practitioner feedback.
