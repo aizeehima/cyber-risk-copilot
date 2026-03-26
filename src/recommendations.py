@@ -1,5 +1,8 @@
 from __future__ import annotations
+
 from typing import Dict, List
+
+from .mapping import get_mapping
 
 
 ACTIONS_BY_CATEGORY: Dict[str, Dict[str, List[str]]] = {
@@ -85,22 +88,37 @@ ACTIONS_BY_CATEGORY: Dict[str, Dict[str, List[str]]] = {
 }
 
 
-def build_recommendations(top_categories: List[str]) -> Dict[str, List[str]]:
+def build_recommendations(top_categories: List[str]) -> Dict[str, List[dict]]:
     """
     Returns a phased plan aggregated from the top categories.
+    Each item includes:
+      - text
+      - nist
+      - cis
     """
     plan = {"phase1": [], "phase2": [], "phase3": []}
+
     for cat in top_categories:
         block = ACTIONS_BY_CATEGORY.get(cat, {})
         for phase in plan:
-            plan[phase].extend(block.get(phase, []))
-    # de-duplicate while preserving order
+            for item in block.get(phase, []):
+                mapping = get_mapping(item)
+                plan[phase].append(
+                    {
+                        "text": item,
+                        "nist": mapping["nist"],
+                        "cis": mapping["cis"],
+                    }
+                )
+
+    # deduplicate by recommendation text
     for phase in plan:
         seen = set()
         deduped = []
         for item in plan[phase]:
-            if item not in seen:
-                seen.add(item)
+            if item["text"] not in seen:
+                seen.add(item["text"])
                 deduped.append(item)
         plan[phase] = deduped
+
     return plan

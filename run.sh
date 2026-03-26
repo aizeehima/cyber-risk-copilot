@@ -2,7 +2,6 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# Activate venv
 source .venv/bin/activate
 
 cmd="${1:-notebook}"
@@ -18,11 +17,14 @@ case "$cmd" in
     ;;
   model)
     python --version
-    python -m src.main
+    if [[ "${2:-}" == "--report" ]]; then
+      python -m src.main --report
+    else
+      python -m src.main
+    fi
     ;;
   *)
-    echo "Usage: ./run.sh {setup|notebook|model}"
+    echo "Usage: ./run.sh {setup|notebook|model [--report]}"
     exit 1
     ;;
 esac
-

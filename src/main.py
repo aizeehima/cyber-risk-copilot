@@ -1,34 +1,33 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
-from .model import Scenario
-from .scoring import score_scenario, rank_categories, normalize_scores
 from .config import load_weights
+from .model import Scenario
 from .recommendations import build_recommendations
+from .scoring import normalize_scores, rank_categories, score_scenario
 
 
 DATA_PATH = Path("data/scenarios/scenarios.json")
 
 
 def main():
-    cfg = load_weights()
+    report_mode = "--report" in sys.argv
+
     raw = json.loads(DATA_PATH.read_text(encoding="utf-8"))
     scenarios = [Scenario.from_dict(x) for x in raw]
+    cfg = load_weights()
 
     for s in scenarios:
         scores, reasons, total = score_scenario(s, cfg)
 
-        # Raw ranking
         ranked = rank_categories(scores)
-
-        # Normalized ranking (0–10) for fair comparison across categories
         max_scores = cfg.max_scores
         norm = normalize_scores(scores, max_scores, scale=cfg.normalized_max)
         ranked_norm = sorted(norm.items(), key=lambda kv: kv[1], reverse=True)
 
-        # Use normalized rank for top categories
         top_categories = [c for c, _ in ranked_norm[:3]]
         plan = build_recommendations(top_categories)
 
@@ -55,7 +54,10 @@ def main():
         for phase in ["phase1", "phase2", "phase3"]:
             print(f"\n{phase.upper()}:")
             for item in plan[phase]:
-                print(f"  • {item}")
+                print(f"  • {item['text']}")
+                if report_mode:
+                    print(f"      NIST CSF: {item['nist']}")
+                    print(f"      CIS v8:   {item['cis']}")
 
 
 if __name__ == "__main__":
