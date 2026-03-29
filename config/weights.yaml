@@ -12,7 +12,7 @@ max_scores:
   email_phishing: 5
   endpoint_device: 4
   data_backup: 10
-  incident_readiness: 4
+  incident_readiness: 6
   governance_compliance: 7
 
 weights:
@@ -70,3 +70,5 @@ weights:
     moderate: 2
     strong: 1
   baseline_incident_readiness: 1
+  remote_access_incident: 1
+  cloud_environment_incident: 1

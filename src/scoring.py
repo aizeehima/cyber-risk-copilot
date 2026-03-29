@@ -130,6 +130,16 @@ def score_scenario(s: Scenario, cfg: WeightsConfig) -> Tuple[RiskScores, RiskRea
         "baseline SME readiness risk",
     )
 
+    # Remote access expands detection surface — harder to monitor distributed sessions
+    if remote_yes:
+        _add(scores, reasons, "incident_readiness",
+             int(w["remote_access_incident"]), "remote_access increases detection complexity")
+
+    # Cloud-only or hybrid environments require cloud-native log integration
+    if (s.it_environment or "").lower() in {"cloud", "hybrid"}:
+        _add(scores, reasons, "incident_readiness",
+             int(w["cloud_environment_incident"]), f"it_environment={s.it_environment} requires cloud log integration")
+
     # ---------------------------
     # Business exposure modifiers
     # ---------------------------
@@ -164,3 +174,77 @@ def normalize_scores(scores: RiskScores, max_scores: Dict[str, int], scale: int 
         m = int(max_scores.get(cat, 0) or 0)
         out[cat] = round((raw / m) * scale, 2) if m > 0 else 0.0
     return out
+
+def compute_theoretical_max(cfg: WeightsConfig) -> Dict[str, int]:
+    """
+    Computes the theoretical maximum raw score for each category
+    by summing all worst-case weight values from config.
+    Used to verify that max_scores in weights.yaml are accurate.
+    """
+    w = cfg.weights
+
+    identity_access = (
+        int(w["iam_maturity"]["low"])
+        + int(w["remote_access_present"])
+        + int(w["user_count"]["ge_25"])
+    )
+
+    email_phishing = (
+        int(w["remote_access_present"])
+        + max(int(v) for v in w["cloud_email"].values())
+        + int(w["third_party_vendors_high_email"])
+    )
+
+    endpoint_device = max(int(v) for v in w["endpoint_management"].values())
+
+    data_backup = (
+        int(w["data_sensitivity"]["high"])
+        + int(w["data_protection_maturity"]["basic"])
+        + int(w["backup_maturity"]["basic"])
+        + int(w["customer_data_volume_high"])
+        + int(w["payment_processing_data"])
+    )
+
+    incident_readiness = (
+        max(int(v) for v in w["logging_monitoring_maturity"].values())
+        + int(w["baseline_incident_readiness"])
+        + int(w["remote_access_incident"])
+        + int(w["cloud_environment_incident"])
+    )
+
+    governance_compliance = (
+        int(w["compliance_pressure"]["high"])
+        + int(w["regulated_environment_present"])
+        + int(w["payment_processing_governance"])
+        + int(w["third_party_vendors_high_governance"])
+    )
+
+    return {
+        "identity_access": identity_access,
+        "email_phishing": email_phishing,
+        "endpoint_device": endpoint_device,
+        "data_backup": data_backup,
+        "incident_readiness": incident_readiness,
+        "governance_compliance": governance_compliance,
+    }
+
+
+def validate_max_scores(cfg: WeightsConfig) -> None:
+    """
+    Asserts that weights.yaml max_scores match the computed theoretical maxima.
+    Raises ValueError on mismatch so misconfiguration is caught at startup.
+    """
+    computed = compute_theoretical_max(cfg)
+    declared = cfg.max_scores
+    mismatches = []
+    for cat, computed_max in computed.items():
+        declared_max = int(declared.get(cat, 0))
+        if declared_max != computed_max:
+            mismatches.append(
+                f"  {cat}: weights.yaml says {declared_max}, computed max is {computed_max}"
+            )
+    if mismatches:
+        raise ValueError(
+            "max_scores in weights.yaml do not match computed theoretical maxima:\n"
+            + "\n".join(mismatches)
+        )
