@@ -8,6 +8,7 @@ from .config import load_weights
 from .model import Scenario
 from .recommendations import build_recommendations
 from .scoring import normalize_scores, rank_categories, score_scenario, validate_max_scores, compute_theoretical_max
+from .narrator import generate_narrative
 
 
 DATA_PATH = Path("data/scenarios/scenarios.json")
@@ -54,6 +55,7 @@ def run_sensitivity(s: Scenario, cfg) -> None:
 def main():
     report_mode = "--report" in sys.argv
     sensitivity_mode = "--sensitivity" in sys.argv
+    narrative_mode = "--narrative" in sys.argv
 
     raw = json.loads(DATA_PATH.read_text(encoding="utf-8"))
     scenarios = [Scenario.from_dict(x) for x in raw]
@@ -99,6 +101,14 @@ def main():
 
         if sensitivity_mode:
             run_sensitivity(s, cfg)
+        if narrative_mode:
+            print("\n--- Plain-English Risk Summary ---")
+            narrative = generate_narrative(
+                s.name, s.industry, s.user_count,
+                top_categories, norm, reasons
+            )
+            print(narrative)
+            print("-" * 80)
 
 
 if __name__ == "__main__":
