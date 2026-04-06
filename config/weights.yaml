@@ -8,11 +8,11 @@ scale:
 
 # Max scores used for normalization (0-10 scale)
 max_scores:
-  identity_access: 8
+  identity_access: 10
   email_phishing: 5
   endpoint_device: 4
   data_backup: 10
-  incident_readiness: 6
+  incident_readiness: 8
   governance_compliance: 7
 
 weights:
@@ -31,9 +31,12 @@ weights:
     medium: 2
     high: 1
   remote_access_present: 2
+  remote_access_limited: 1
   user_count:
     ge_25: 2
     ge_10: 1
+  third_party_vendors_high_iam: 1
+  regulated_high_iam_risk: 1
 
   # Email / Phishing
   cloud_email:
@@ -69,6 +72,9 @@ weights:
     basic: 3
     moderate: 2
     strong: 1
-  baseline_incident_readiness: 1
+  baseline_incident_readiness: 0
   remote_access_incident: 1
   cloud_environment_incident: 1
+  payment_processing_incident: 1
+  low_iam_incident_risk: 1
+  unmanaged_endpoint_incident_risk: 1

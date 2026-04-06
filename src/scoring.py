@@ -61,8 +61,10 @@ def score_scenario(s: Scenario, cfg: WeightsConfig) -> Tuple[RiskScores, RiskRea
     iam_points = int(iam_map.get((s.iam_maturity or "low").lower(), iam_map.get("low", 4)))
     _add(scores, reasons, "identity_access", iam_points, f"iam_maturity={s.iam_maturity}")
 
-    remote_yes = str(s.remote_access).strip().lower() in {"yes", "true"}
-    ra_points = int(w["remote_access_present"]) if remote_yes else 0
+    remote_val = str(s.remote_access).strip().lower()
+    remote_yes = remote_val in {"yes", "true"}
+    remote_limited = remote_val == "limited"
+    ra_points = int(w["remote_access_present"]) if remote_yes else (int(w["remote_access_limited"]) if remote_limited else 0)
     _add(scores, reasons, "identity_access", ra_points, f"remote_access={s.remote_access}")
 
     uc_map = w["user_count"]
@@ -70,6 +72,15 @@ def score_scenario(s: Scenario, cfg: WeightsConfig) -> Tuple[RiskScores, RiskRea
         _add(scores, reasons, "identity_access", int(uc_map["ge_25"]), "user_count>=25")
     elif s.user_count >= 10:
         _add(scores, reasons, "identity_access", int(uc_map["ge_10"]), "10<=user_count<25")
+
+    # Third-party vendors increase credential exposure surface
+    if (s.third_party_vendors or "").lower() == "high":
+        _add(scores, reasons, "identity_access", int(w["third_party_vendors_high_iam"]), "third_party_vendors=high increases credential exposure")
+
+    # Regulated environments with medium/low IAM face higher credential breach consequences
+    if s.regulatory_environment and (s.iam_maturity or "").lower() in {"low", "medium"}:
+        _add(scores, reasons, "identity_access",
+             int(w["regulated_high_iam_risk"]), "regulated environment amplifies IAM risk")
 
     # ---------------------------
     # Email & Phishing
@@ -131,7 +142,7 @@ def score_scenario(s: Scenario, cfg: WeightsConfig) -> Tuple[RiskScores, RiskRea
     )
 
     # Remote access expands detection surface — harder to monitor distributed sessions
-    if remote_yes:
+    if remote_yes or remote_limited:
         _add(scores, reasons, "incident_readiness",
              int(w["remote_access_incident"]), "remote_access increases detection complexity")
 
@@ -139,6 +150,20 @@ def score_scenario(s: Scenario, cfg: WeightsConfig) -> Tuple[RiskScores, RiskRea
     if (s.it_environment or "").lower() in {"cloud", "hybrid"}:
         _add(scores, reasons, "incident_readiness",
              int(w["cloud_environment_incident"]), f"it_environment={s.it_environment} requires cloud log integration")
+
+    if bool(s.payment_processing):
+        _add(scores, reasons, "incident_readiness",
+             int(w["payment_processing_incident"]), "payment_processing increases incident impact")
+
+    # Low IAM maturity increases likelihood of incidents occurring
+    if (s.iam_maturity or "").lower() == "low":
+        _add(scores, reasons, "incident_readiness",
+             int(w["low_iam_incident_risk"]), "low IAM maturity increases incident likelihood")
+
+    # Unmanaged endpoints increase incident surface
+    if (s.endpoint_management or "").lower() == "unmanaged":
+        _add(scores, reasons, "incident_readiness",
+             int(w["unmanaged_endpoint_incident_risk"]), "unmanaged endpoints increase incident surface")
 
     # ---------------------------
     # Business exposure modifiers
@@ -187,6 +212,8 @@ def compute_theoretical_max(cfg: WeightsConfig) -> Dict[str, int]:
         int(w["iam_maturity"]["low"])
         + int(w["remote_access_present"])
         + int(w["user_count"]["ge_25"])
+	+ int(w["third_party_vendors_high_iam"])
+	+ int(w["regulated_high_iam_risk"])
     )
 
     email_phishing = (
@@ -210,6 +237,9 @@ def compute_theoretical_max(cfg: WeightsConfig) -> Dict[str, int]:
         + int(w["baseline_incident_readiness"])
         + int(w["remote_access_incident"])
         + int(w["cloud_environment_incident"])
+	+ int(w["payment_processing_incident"])
+	+ int(w["low_iam_incident_risk"])
+        + int(w["unmanaged_endpoint_incident_risk"])
     )
 
     governance_compliance = (
