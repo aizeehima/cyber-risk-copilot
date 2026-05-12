@@ -1,8 +1,10 @@
 from __future__ import annotations
 import json
+import os
 import urllib.request
 import urllib.error
 from typing import Dict, List
+import time
 
 
 def build_prompt(scenario_name: str, industry: str, user_count: int,
@@ -40,41 +42,46 @@ The top 3 cybersecurity risk areas identified for this organisation are:
 Write a 3-paragraph plain-English summary for this business owner.
 Paragraph 1: Explain what the top risk area is and why it matters for their specific organisation.
 Paragraph 2: Briefly mention the second and third risk areas and why they are relevant.
-Paragraph 3: Give one encouraging sentence about what addressing these risks will achieve.
+Paragraph 3: One encouraging sentence about what addressing these risks will achieve.
 
 Rules:
 - Write in second person (you, your organisation)
 - No bullet points, no technical jargon, no scores or numbers
 - Keep it under 200 words
-- Sound like a trusted advisor, not a report
-- Do not repeat the organisation name more than once"""
+- Sound like a trusted advisor, not a report"""
 
 
 def generate_narrative(scenario_name: str, industry: str, user_count: int,
                        top_categories: List[str], scores: Dict[str, float],
                        reasons: Dict[str, List[str]]) -> str:
 
+    api_key = os.environ.get("GOOGLE_API_KEY", "")
+    if not api_key:
+        return "[Narrative unavailable — set GOOGLE_API_KEY to enable this feature]"
+
     prompt = build_prompt(scenario_name, industry, user_count,
                           top_categories, scores, reasons)
 
     payload = json.dumps({
-        "model": "tinyllama",
-        "prompt": prompt,
-        "stream": False
+        "contents": [{"parts": [{"text": prompt}]}]
     }).encode("utf-8")
 
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+
     req = urllib.request.Request(
-        "http://localhost:11434/api/generate",
+        url,
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST"
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            return data.get("response", "").strip()
-    except urllib.error.URLError as e:
-        return f"[Narrative unavailable — is Ollama running? Error: {e}]"
+        time.sleep(5)
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8")
+        return f"[Narrative generation failed: {e.code} — {body[:200]}]"
     except Exception as e:
         return f"[Narrative generation failed: {e}]"
