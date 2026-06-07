@@ -1,7 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Dict, List
-
+from typing import Any, Dict, List, Optional
 
 @dataclass
 class Scenario:
@@ -24,6 +23,8 @@ class Scenario:
     payment_processing: bool
     customer_data_volume: str
     third_party_vendors: str
+    company_stage: str = "live"
+    notes: Optional[Dict[str, Any]] = None
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "Scenario":
@@ -47,4 +48,6 @@ class Scenario:
             payment_processing=bool(d["payment_processing"]),
             customer_data_volume=str(d["customer_data_volume"]),
             third_party_vendors=str(d["third_party_vendors"]),
+            company_stage=str(d.get("company_stage", "live")),
+            notes=d.get("notes", None),
         )

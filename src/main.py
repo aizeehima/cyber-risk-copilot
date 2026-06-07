@@ -8,7 +8,7 @@ from .config import load_weights
 from .model import Scenario
 from .recommendations import build_recommendations
 from .scoring import normalize_scores, rank_categories, score_scenario, validate_max_scores, compute_theoretical_max
-from .narrator import generate_narrative
+from .narrator import generate_narrative, generate_cso_brief
 
 
 DATA_PATH = Path("data/scenarios/scenarios.json")
@@ -105,11 +105,19 @@ def main():
             print("\n--- Plain-English Risk Summary ---")
             narrative = generate_narrative(
                 s.name, s.industry, s.user_count,
-                top_categories, norm, reasons
+                top_categories, norm, reasons,
+        s.notes
             )
             print(narrative)
             print("-" * 80)
-
+            print("\n--- CSO Brief ---")
+            brief = generate_cso_brief(
+                s.name, s.industry, s.user_count,
+                s.company_stage, top_categories, norm, reasons,
+                s.regulatory_environment, s.notes
+            )
+            print(brief)
+            print("-" * 80)
 
 if __name__ == "__main__":
     main()
