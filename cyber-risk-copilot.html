@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyber Risk Copilot</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f9fa; color: #111; min-height: 100vh; }
+  header { background: #0F6E56; color: #fff; padding: 1.25rem 2rem; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  header p { font-size: 13px; color: #9FE1CB; margin-top: 2px; }
+  .badge { background: #1D9E75; color: #9FE1CB; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 500; }
+  main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .card { background: #fff; border: 1px solid #e0e4ea; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.25rem; }
+  .card h2 { font-size: 14px; font-weight: 600; color: #0F6E56; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+  label { display: block; font-size: 13px; font-weight: 500; color: #444; margin-bottom: 4px; }
+  select, input[type=text], input[type=number], input[type=password] { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid #d0d5dd; border-radius: 6px; background: #fff; color: #111; outline: none; }
+  select:focus, input:focus { border-color: #1D9E75; box-shadow: 0 0 0 3px rgba(29,158,117,0.15); }
+  textarea { width: 100%; padding: 8px 10px; font-size: 13px; border: 1px solid #d0d5dd; border-radius: 6px; background: #fff; color: #111; outline: none; resize: vertical; min-height: 80px; }
+  .field { margin-bottom: 0.75rem; }
+  .btn-group { display: flex; gap: 8px; margin-top: 1rem; }
+  button { padding: 9px 20px; font-size: 13px; font-weight: 500; border-radius: 6px; cursor: pointer; border: none; transition: background 0.15s; }
+  .btn-primary { background: #0F6E56; color: #fff; }
+  .btn-primary:hover { background: #1D9E75; }
+  .btn-secondary { background: #fff; color: #0F6E56; border: 1px solid #1F3864; }
+  .btn-secondary:hover { background: #E1F5EE; }
+  .btn-primary:disabled { background: #999; cursor: not-allowed; }
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid #e0e4ea; margin-bottom: 1.5rem; }
+  .tab { padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; color: #666; background: none; border-top: none; border-left: none; border-right: none; }
+  .tab.active { color: #0F6E56; border-bottom-color: #0F6E56; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .score-bar-wrap { margin-bottom: 0.75rem; }
+  .score-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .score-label span:first-child { color: #333; font-weight: 500; }
+  .score-label span:last-child { color: #0F6E56; font-weight: 600; }
+  .score-bar { height: 8px; background: #eef0f5; border-radius: 4px; overflow: hidden; }
+  .score-fill { height: 100%; border-radius: 4px; background: #1D9E75; transition: width 0.4s; }
+  .score-fill.high { background: #c0392b; }
+  .score-fill.mid { background: #e67e22; }
+  .score-fill.low { background: #27ae60; }
+  .top3 { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .top3-badge { background: #0F6E56; color: #fff; font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 500; }
+  .phase { margin-bottom: 1rem; }
+  .phase h4 { font-size: 13px; font-weight: 600; color: #0F6E56; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .phase ul { list-style: none; padding: 0; }
+  .phase ul li { font-size: 13px; color: #333; padding: 4px 0 4px 16px; border-bottom: 1px solid #f0f2f5; position: relative; }
+  .phase ul li::before { content: "•"; position: absolute; left: 0; color: #0F6E56; }
+  .cso-brief { font-size: 14px; line-height: 1.75; color: #222; white-space: pre-wrap; }
+  .cso-brief strong { color: #0F6E56; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { background: #fff0f0; border: 1px solid #f5c6c6; border-radius: 6px; padding: 12px; color: #c0392b; font-size: 13px; margin-top: 1rem; }
+  .results { display: none; }
+  .results.visible { display: block; }
+  .meta-row { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 13px; color: #666; margin-bottom: 1rem; }
+  .meta-row span strong { color: #111; }
+  .api-row { display: flex; gap: 8px; align-items: flex-end; }
+  .api-row input { flex: 1; }
+  .section-divider { border: none; border-top: 1px solid #e0e4ea; margin: 1.25rem 0; }
+  .info-box { background: #E1F5EE; border-left: 3px solid #1D9E75; border-radius: 0 6px 6px 0; padding: 10px 14px; font-size: 13px; color: #333; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Cyber Risk Copilot</h1>
+    <p>SME Cybersecurity Risk Prioritisation Framework</p>
+  </div>
+  <a href="https://github.com/aizeehima/cyber-risk-copilot" target="_blank" style="margin-left:auto; color:#9FE1CB; font-size:12px; text-decoration:none; border:1px solid #1D9E75; padding:4px 12px; border-radius:4px;">View on GitHub</a>
+</header>
+
+<main>
+
+  <input type="hidden" id="apiKey" value="AIzaSyCDm3kc2NnRPtozbOMBQ4VdXfq4njg9H6U">
+
+  <div class="card">
+    <h2>Organisation Profile</h2>
+    <div class="grid-2">
+      <div class="field">
+        <label>Organisation name</label>
+        <input type="text" id="name" placeholder="e.g. VenueHorn">
+      </div>
+      <div class="field">
+        <label>Industry</label>
+        <select id="industry">
+          <option value="technology">Technology</option>
+          <option value="healthcare">Healthcare</option>
+          <option value="fintech">Fintech</option>
+          <option value="ecommerce">Ecommerce</option>
+          <option value="legal">Legal</option>
+          <option value="nonprofit">Nonprofit</option>
+          <option value="hospitality">Hospitality</option>
+          <option value="agriculture">Agriculture</option>
+          <option value="proptech_eventtech">PropTech / Event Tech</option>
+          <option value="recreation_childcare">Recreation / Childcare</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Number of users / staff</label>
+        <input type="number" id="userCount" value="10" min="1">
+      </div>
+      <div class="field">
+        <label>Company stage</label>
+        <select id="companyStage">
+          <option value="pre_launch">Pre-launch</option>
+          <option value="live" selected>Live and operating</option>
+          <option value="scaling">Scaling</option>
+        </select>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+    <div class="grid-2">
+      <div class="field">
+        <label>IT environment</label>
+        <select id="itEnv">
+          <option value="cloud">Cloud</option>
+          <option value="hybrid">Hybrid</option>
+          <option value="on_premise">On-premise</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Cloud email platform</label>
+        <select id="cloudEmail">
+          <option value="microsoft_365">Microsoft 365</option>
+          <option value="google_workspace">Google Workspace</option>
+          <option value="other">Other / self-hosted</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Remote access</label>
+        <select id="remoteAccess">
+          <option value="yes">Full remote / BYOD</option>
+          <option value="limited">Partial</option>
+          <option value="no">None</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Endpoint management</label>
+        <select id="endpointMgmt">
+          <option value="unmanaged">Unmanaged (BYOD / no MDM)</option>
+          <option value="partially_managed">Partially managed</option>
+          <option value="managed">Fully managed (MDM enforced)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Third-party vendors</label>
+        <select id="vendors">
+          <option value="low">Low (1–2 tools)</option>
+          <option value="medium">Medium (3–5 tools)</option>
+          <option value="high">High (6+ tools / SaaS)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Payment processing</label>
+        <select id="payments">
+          <option value="false">No</option>
+          <option value="true">Yes</option>
+        </select>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+    <div class="grid-3">
+      <div class="field">
+        <label>IAM maturity</label>
+        <select id="iam">
+          <option value="low">Low — no MFA, shared accounts</option>
+          <option value="medium" selected>Medium — partial MFA</option>
+          <option value="high">High — MFA enforced, least privilege</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Data protection maturity</label>
+        <select id="dataProtection">
+          <option value="basic">Basic</option>
+          <option value="moderate">Moderate</option>
+          <option value="strong">Strong</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Backup maturity</label>
+        <select id="backup">
+          <option value="basic">Basic / untested</option>
+          <option value="moderate">Moderate</option>
+          <option value="strong">Strong / immutable</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Logging & monitoring</label>
+        <select id="logging">
+          <option value="basic">Basic / none</option>
+          <option value="moderate">Moderate</option>
+          <option value="strong">Strong / SIEM</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Data sensitivity</label>
+        <select id="dataSensitivity">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium — PII</option>
+          <option value="high">High — PHI / payment data</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Customer data volume</label>
+        <select id="dataVolume">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+    <div class="grid-2">
+      <div class="field">
+        <label>Compliance pressure</label>
+        <select id="compliance">
+          <option value="low">Low — no named regulation</option>
+          <option value="medium">Medium — some obligations</option>
+          <option value="high">High — HIPAA / PCI-DSS / GDPR</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Regulatory environment (comma separated, or leave blank)</label>
+        <input type="text" id="regulation" placeholder="e.g. GDPR, PCI-DSS">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Additional context (optional — helps personalise the CSO brief)</label>
+      <textarea id="notes" placeholder="e.g. Pre-launch marketplace, BYOD team of students, DNS migration underway, Stripe and AirWallex pending..."></textarea>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn-primary" id="runBtn" onclick="runAssessment()">Run assessment</button>
+      <button class="btn-secondary" onclick="resetForm()">Reset</button>
+    </div>
+    <div id="errorBox" class="error" style="display:none;"></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="card">
+      <div class="meta-row" id="metaRow"></div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('risk')">Risk assessment</button>
+        <button class="tab" onclick="switchTab('cso')">CSO brief</button>
+      </div>
+
+      <div class="tab-content active" id="tab-risk">
+        <div id="top3Wrap"></div>
+        <div id="scoresWrap"></div>
+        <hr class="section-divider">
+        <div id="planWrap"></div>
+      </div>
+
+      <div class="tab-content" id="tab-cso">
+        <div id="csoWrap" class="cso-brief">Generating CSO brief...</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const WEIGHTS = {
+  identity_access: {
+    iam_low: 4, iam_medium: 2, iam_high: 1,
+    remote_yes: 2, remote_limited: 1,
+    users_25: 2, users_10: 1,
+    regulated_iam: 1, vendors_high_iam: 1
+  },
+  email_phishing: {
+    email_m365: 2, email_google: 2, email_other: 1,
+    remote_yes: 2, remote_limited: 1,
+    vendors_high: 1
+  },
+  endpoint_device: {
+    ep_unmanaged: 4, ep_partial: 2, ep_managed: 1
+  },
+  data_backup: {
+    sens_high: 3, sens_medium: 2, sens_low: 1,
+    dp_basic: 2, dp_moderate: 1,
+    backup_basic: 3, backup_moderate: 2, backup_strong: 1,
+    payment: 1, vol_high: 1
+  },
+  incident_readiness: {
+    log_basic: 3, log_moderate: 2, log_strong: 1,
+    baseline: 1, remote_yes: 1, cloud_hybrid: 1, payment: 1,
+    iam_low_amp: 1, ep_unmanaged_amp: 1
+  },
+  governance_compliance: {
+    comp_high: 3, comp_medium: 2, comp_low: 1,
+    regulated: 2, payment: 1, vendors_high: 1
+  }
+};
+const MAX_SCORES = {
+  identity_access: 10, email_phishing: 5, endpoint_device: 4,
+  data_backup: 10, incident_readiness: 9, governance_compliance: 7
+};
+const CATEGORY_LABELS = {
+  identity_access: "Identity & Access",
+  email_phishing: "Email & Phishing",
+  endpoint_device: "Endpoint & Device",
+  data_backup: "Data Protection & Backup",
+  incident_readiness: "Incident Readiness",
+  governance_compliance: "Governance & Compliance"
+};
+const RECOMMENDATIONS = {
+  identity_access: {
+    phase1: ["Enable MFA for all users — start with admin accounts", "Remove unused accounts and enforce least privilege", "Separate admin accounts from daily-use accounts"],
+    phase2: ["Adopt SSO where feasible and enforce strong password policy", "Implement basic privileged access practices"],
+    phase3: ["Introduce privileged access management and regular access reviews"]
+  },
+  email_phishing: {
+    phase1: ["Enable phishing protections and safe link/attachment controls", "Run a basic phishing awareness push and reporting process"],
+    phase2: ["Implement SPF/DKIM/DMARC and tighten email forwarding rules", "Set up alerting for suspicious sign-ins and mailbox rule changes"],
+    phase3: ["Automate phishing simulations and training metrics"]
+  },
+  endpoint_device: {
+    phase1: ["Ensure all devices have basic endpoint protection enabled", "Apply OS and browser patching policy (minimum monthly updates)"],
+    phase2: ["Adopt centralised endpoint management (MDM) for key devices", "Enable disk encryption on laptops and enforce screen lock policies"],
+    phase3: ["Add device compliance checks and conditional access policies"]
+  },
+  data_backup: {
+    phase1: ["Confirm backups exist for critical systems and test one restore", "Encrypt sensitive data at rest and in transit where applicable"],
+    phase2: ["Implement data classification basics and restrict access to sensitive files", "Improve backup cadence and add offline/immutable backup where possible"],
+    phase3: ["Introduce DLP controls and automated data retention policies"]
+  },
+  incident_readiness: {
+    phase1: ["Centralise basic logs (auth, email, endpoints) and define alert owners", "Create an incident contact list and a simple response checklist"],
+    phase2: ["Define playbooks for phishing, ransomware, and account takeover", "Run a tabletop exercise with leadership"],
+    phase3: ["Improve detection rules and incident metrics (MTTD/MTTR tracking)"]
+  },
+  governance_compliance: {
+    phase1: ["Confirm regulatory obligations and document minimum required controls", "Assign security ownership and define a basic risk register"],
+    phase2: ["Map key controls to NIST CSF / CIS Controls and track progress", "Review third-party vendors and document security expectations"],
+    phase3: ["Formalise policies (access, backups, incident response) and audit readiness"]
+  }
+};
+
+function scoreScenario(f) {
+  const s = { identity_access: 0, email_phishing: 0, endpoint_device: 0, data_backup: 0, incident_readiness: 0, governance_compliance: 0 };
+  const hasReg = f.regulation.length > 0;
+  const isRegulated = hasReg || f.compliance !== "low";
+
+  if (f.iam === "low") s.identity_access += 4;
+  else if (f.iam === "medium") s.identity_access += 2;
+  else s.identity_access += 1;
+  if (f.remote === "yes") s.identity_access += 2;
+  else if (f.remote === "limited") s.identity_access += 1;
+  if (f.users >= 25) s.identity_access += 2;
+  else if (f.users >= 10) s.identity_access += 1;
+  if (isRegulated) s.identity_access += 1;
+  if (f.vendors === "high") s.identity_access += 1;
+
+  if (f.email === "microsoft_365" || f.email === "google_workspace") s.email_phishing += 2;
+  else s.email_phishing += 1;
+  if (f.remote === "yes") s.email_phishing += 2;
+  else if (f.remote === "limited") s.email_phishing += 1;
+  if (f.vendors === "high") s.email_phishing += 1;
+
+  if (f.endpoint === "unmanaged") s.endpoint_device += 4;
+  else if (f.endpoint === "partially_managed") s.endpoint_device += 2;
+  else s.endpoint_device += 1;
+
+  if (f.sensitivity === "high") s.data_backup += 3;
+  else if (f.sensitivity === "medium") s.data_backup += 2;
+  else s.data_backup += 1;
+  if (f.dataProtection === "basic") s.data_backup += 2;
+  else if (f.dataProtection === "moderate") s.data_backup += 1;
+  if (f.backup === "basic") s.data_backup += 3;
+  else if (f.backup === "moderate") s.data_backup += 2;
+  else s.data_backup += 1;
+  if (f.payments) s.data_backup += 1;
+  if (f.dataVolume === "high") s.data_backup += 1;
+
+  if (f.logging === "basic") s.incident_readiness += 3;
+  else if (f.logging === "moderate") s.incident_readiness += 2;
+  else s.incident_readiness += 1;
+  s.incident_readiness += 1;
+  if (f.remote === "yes") s.incident_readiness += 1;
+  if (f.itEnv === "cloud" || f.itEnv === "hybrid") s.incident_readiness += 1;
+  if (f.payments) s.incident_readiness += 1;
+  if (f.iam === "low") s.incident_readiness += 1;
+  if (f.endpoint === "unmanaged") s.incident_readiness += 1;
+
+  if (f.compliance === "high") s.governance_compliance += 3;
+  else if (f.compliance === "medium") s.governance_compliance += 2;
+  else s.governance_compliance += 1;
+  if (hasReg) s.governance_compliance += 2;
+  if (f.payments) s.governance_compliance += 1;
+  if (f.vendors === "high") s.governance_compliance += 1;
+
+  const norm = {};
+  for (const cat of Object.keys(s)) {
+    norm[cat] = parseFloat(((s[cat] / MAX_SCORES[cat]) * 10).toFixed(2));
+  }
+  return norm;
+}
+
+function getFields() {
+  return {
+    name: document.getElementById("name").value || "Organisation",
+    industry: document.getElementById("industry").value,
+    users: parseInt(document.getElementById("userCount").value) || 10,
+    stage: document.getElementById("companyStage").value,
+    itEnv: document.getElementById("itEnv").value,
+    email: document.getElementById("cloudEmail").value,
+    remote: document.getElementById("remoteAccess").value,
+    endpoint: document.getElementById("endpointMgmt").value,
+    vendors: document.getElementById("vendors").value,
+    payments: document.getElementById("payments").value === "true",
+    iam: document.getElementById("iam").value,
+    dataProtection: document.getElementById("dataProtection").value,
+    backup: document.getElementById("backup").value,
+    logging: document.getElementById("logging").value,
+    sensitivity: document.getElementById("dataSensitivity").value,
+    dataVolume: document.getElementById("dataVolume").value,
+    compliance: document.getElementById("compliance").value,
+    regulation: document.getElementById("regulation").value.split(",").map(s=>s.trim()).filter(Boolean),
+    notes: document.getElementById("notes").value
+  };
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+  document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add("active");
+  document.getElementById(`tab-${tab}`).classList.add("active");
+}
+
+async function runAssessment() {
+  const btn = document.getElementById("runBtn");
+  const errBox = document.getElementById("errorBox");
+  errBox.style.display = "none";
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Running...';
+
+  try {
+    const f = getFields();
+    const norm = scoreScenario(f);
+    const ranked = Object.entries(norm).sort((a,b) => b[1]-a[1]);
+    const top3 = ranked.slice(0,3).map(e=>e[0]);
+
+    document.getElementById("metaRow").innerHTML = `
+      <span><strong>${f.name}</strong></span>
+      <span>Industry: <strong>${f.industry.replace(/_/g," ")}</strong></span>
+      <span>Users: <strong>${f.users}</strong></span>
+      <span>Stage: <strong>${f.stage.replace(/_/g," ")}</strong></span>
+      <span>Compliance: <strong>${f.compliance}</strong></span>
+    `;
+
+    const top3HTML = `<div class="top3">${top3.map(c=>`<span class="top3-badge">${CATEGORY_LABELS[c]}</span>`).join("")}</div>`;
+    document.getElementById("top3Wrap").innerHTML = `<p style="font-size:12px;color:#666;margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">Top 3 risk areas</p>${top3HTML}`;
+
+    let barsHTML = "";
+    for (const [cat, score] of ranked) {
+      const pct = Math.min(score * 10, 100).toFixed(0);
+      const cls = score >= 8 ? "high" : score >= 5 ? "mid" : "low";
+      barsHTML += `<div class="score-bar-wrap">
+        <div class="score-label"><span>${CATEGORY_LABELS[cat]}</span><span>${score.toFixed(1)}/10</span></div>
+        <div class="score-bar"><div class="score-fill ${cls}" style="width:${pct}%"></div></div>
+      </div>`;
+    }
+    document.getElementById("scoresWrap").innerHTML = barsHTML;
+
+    let planHTML = "<p style='font-size:12px;color:#666;margin-bottom:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;'>Prioritised action plan</p>";
+    for (const phase of ["phase1","phase2","phase3"]) {
+      const label = phase === "phase1" ? "Phase 1 — Immediate" : phase === "phase2" ? "Phase 2 — Short term" : "Phase 3 — Long term";
+      let items = [];
+      for (const cat of top3) {
+        items = items.concat(RECOMMENDATIONS[cat][phase]);
+      }
+      planHTML += `<div class="phase"><h4>${label}</h4><ul>${items.map(i=>`<li>${i}</li>`).join("")}</ul></div>`;
+    }
+    document.getElementById("planWrap").innerHTML = planHTML;
+
+    document.getElementById("results").classList.add("visible");
+    switchTab("risk");
+
+    document.getElementById("csoWrap").innerHTML = "Generating CSO brief...";
+    const apiKey = document.getElementById("apiKey").value.trim();
+    if (!apiKey) {
+      document.getElementById("csoWrap").innerHTML = "[Enter a Gemini API key above to generate the CSO brief]";
+    } else {
+      const cso = await generateCSOBrief(f, top3, norm, apiKey);
+      document.getElementById("csoWrap").innerHTML = cso.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    }
+
+  } catch(e) {
+    errBox.textContent = "Error: " + e.message;
+    errBox.style.display = "block";
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "Run assessment";
+  }
+}
+
+async function generateCSOBrief(f, top3, norm, apiKey) {
+  const stageCtx = {
+    pre_launch: "This organisation has not yet launched. Security decisions made now set the baseline posture at launch.",
+    live: "This organisation is live with real users and data. Security gaps are active risks, not theoretical.",
+    scaling: "This organisation is growing rapidly. Controls that worked at a smaller size may no longer be sufficient."
+  }[f.stage] || "";
+
+  const topRisks = top3.map(c => `- ${CATEGORY_LABELS[c]}: ${norm[c].toFixed(1)}/10`).join("\n");
+  const notesBlock = f.notes ? `\nAdditional context:\n${f.notes}` : "";
+  const regBlock = f.regulation.length ? `\nRegulatory obligations: ${f.regulation.join(", ")}` : "";
+
+  const prompt = `You are a virtual Chief Security Officer writing a confidential security brief for the founder and leadership of a small business you know well.
+
+Organisation: ${f.name}
+Industry: ${f.industry.replace(/_/g," ")}
+Team size: ${f.users} people
+Stage: ${f.stage.replace(/_/g," ")}
+${stageCtx}
+${regBlock}
+${notesBlock}
+
+Top 3 risk areas:
+${topRisks}
+
+Write a CSO Brief with exactly these four sections using these exact headers:
+
+WHERE YOU STAND
+2-3 sentences on their current security posture. Be direct, not alarmist.
+
+WHAT IS COMING AT YOU
+3-4 sentences on the real threats and regulatory obligations most relevant right now. If regulatory obligations are incoming, explain in plain English what they will require based on the data this organisation handles.
+
+YOUR PRIORITY LIST — NEXT 90 DAYS
+5 numbered plain-English actions. Each is one sentence. Reference their actual tools and context where available. No jargon.
+
+WHAT GOOD LOOKS LIKE
+2 sentences describing a defensible posture at their exact stage. Give them a target.
+
+Rules: second person, plain English, under 400 words, no scores or metrics, sound like a trusted advisor.`;
+
+  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+  });
+  if (!resp.ok) throw new Error(`Gemini API error: ${resp.status}`);
+  const data = await resp.json();
+  return data.candidates[0].content.parts[0].text.trim();
+}
+
+function resetForm() {
+  document.getElementById("results").classList.remove("visible");
+  document.getElementById("name").value = "";
+  document.getElementById("notes").value = "";
+  document.getElementById("errorBox").style.display = "none";
+}
+</script>
+
+<footer style="text-align:center; padding:1.5rem; font-size:12px; color:#888; border-top:1px solid #e0e4ea; margin-top:1rem;">
+  Cyber Risk Copilot &nbsp;·&nbsp; 
+  <a href="https://github.com/aizeehima/cyber-risk-copilot" target="_blank" style="color:#0F6E56;">github.com/aizeehima/cyber-risk-copilot</a>
+  &nbsp;·&nbsp; Aizenosa Nosa-Ehima &nbsp;·&nbsp; M.S. Cybersecurity, University of Georgia
+</footer>
+</body>
+</html>
